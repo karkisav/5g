@@ -1,0 +1,19 @@
+# Python
+__pycache__/
+*.py[cod]
+*.so
+.venv/
+venv/
+.pytest_cache/
+.mypy_cache/
+
+# Local DB and uploads
+*.db
+backend/storage/
+
+# Node
+node_modules/
+frontend/dist/
+
+# OS
+.DS_Store

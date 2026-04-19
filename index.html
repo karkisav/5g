@@ -1,0 +1,460 @@
+<!doctype html>
+<html lang="en">
+<head>
+	<meta charset="UTF-8">
+	<meta name="viewport" content="width=device-width, initial-scale=1.0">
+	<title>Face Recognition Dashboard</title>
+	<link rel="preconnect" href="https://fonts.googleapis.com">
+	<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+	<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;700&family=IBM+Plex+Mono:wght@400;500&display=swap" rel="stylesheet">
+	<style>
+		:root {
+			--bg-deep: #0f1a1d;
+			--bg-mid: #193139;
+			--panel: rgba(11, 18, 21, 0.72);
+			--panel-border: rgba(145, 190, 200, 0.24);
+			--text-main: #ebfbff;
+			--text-muted: #9cc2c8;
+			--accent-a: #ffd166;
+			--accent-b: #63d5c7;
+			--danger: #ff6b6b;
+			--ok: #64d67b;
+			--shadow: 0 20px 60px rgba(0, 0, 0, 0.35);
+		}
+
+		* {
+			box-sizing: border-box;
+			margin: 0;
+			padding: 0;
+		}
+
+		body {
+			min-height: 100vh;
+			font-family: "Space Grotesk", sans-serif;
+			color: var(--text-main);
+			background:
+				radial-gradient(1200px 600px at 10% 10%, #1f4e58 0%, transparent 55%),
+				radial-gradient(900px 500px at 95% 95%, #304f2f 0%, transparent 55%),
+				linear-gradient(140deg, var(--bg-deep), var(--bg-mid));
+			padding: 24px;
+		}
+
+		.wrap {
+			max-width: 1320px;
+			margin: 0 auto;
+			display: grid;
+			gap: 20px;
+		}
+
+		.topbar {
+			display: flex;
+			justify-content: space-between;
+			align-items: flex-end;
+			gap: 12px;
+		}
+
+		.title h1 {
+			font-size: clamp(1.8rem, 4vw, 2.8rem);
+			letter-spacing: 0.04em;
+			line-height: 1.1;
+		}
+
+		.title p {
+			margin-top: 6px;
+			color: var(--text-muted);
+			font-size: 0.95rem;
+		}
+
+		.mode-pill {
+			font-family: "IBM Plex Mono", monospace;
+			font-size: 0.88rem;
+			border: 1px solid var(--panel-border);
+			background: rgba(12, 30, 34, 0.7);
+			color: var(--accent-a);
+			border-radius: 999px;
+			padding: 8px 14px;
+			min-width: 130px;
+			text-align: center;
+		}
+
+		.grid {
+			display: grid;
+			grid-template-columns: 2fr 1fr;
+			gap: 20px;
+		}
+
+		.panel {
+			background: var(--panel);
+			border: 1px solid var(--panel-border);
+			border-radius: 18px;
+			box-shadow: var(--shadow);
+			backdrop-filter: blur(10px);
+		}
+
+		.feed-panel {
+			padding: 14px;
+			display: grid;
+			gap: 12px;
+		}
+
+		.feed {
+			width: 100%;
+			aspect-ratio: 16 / 9;
+			object-fit: cover;
+			border-radius: 12px;
+			border: 1px solid rgba(255, 255, 255, 0.18);
+			background: #0b1214;
+		}
+
+		.feed-meta {
+			display: flex;
+			justify-content: space-between;
+			gap: 10px;
+			flex-wrap: wrap;
+			font-family: "IBM Plex Mono", monospace;
+			font-size: 0.85rem;
+			color: var(--text-muted);
+		}
+
+		.controls {
+			padding: 16px;
+			display: grid;
+			gap: 14px;
+			align-content: start;
+		}
+
+		.controls h2 {
+			font-size: 1.12rem;
+			letter-spacing: 0.04em;
+		}
+
+		.section {
+			display: grid;
+			gap: 8px;
+			padding: 12px;
+			border-radius: 12px;
+			border: 1px solid rgba(255, 255, 255, 0.12);
+			background: rgba(9, 14, 17, 0.45);
+		}
+
+		.section h3 {
+			font-size: 0.95rem;
+			color: #d7edf2;
+			font-weight: 500;
+		}
+
+		.row {
+			display: grid;
+			grid-template-columns: 1fr 1fr;
+			gap: 8px;
+		}
+
+		input,
+		select,
+		button {
+			width: 100%;
+			border-radius: 10px;
+			border: 1px solid rgba(255, 255, 255, 0.2);
+			background: rgba(11, 21, 24, 0.95);
+			color: var(--text-main);
+			font-family: inherit;
+			padding: 10px 12px;
+		}
+
+		input::placeholder {
+			color: #9ab0b4;
+		}
+
+		button {
+			font-weight: 600;
+			cursor: pointer;
+			transition: transform 0.15s ease, border-color 0.15s ease;
+		}
+
+		button:hover {
+			transform: translateY(-1px);
+			border-color: rgba(255, 255, 255, 0.4);
+		}
+
+		.btn-primary {
+			background: linear-gradient(120deg, #195f65, #2e8d80);
+		}
+
+		.btn-warn {
+			background: linear-gradient(120deg, #654d19, #8f6f2e);
+		}
+
+		.btn-danger {
+			background: linear-gradient(120deg, #6c2c2c, #8f3b3b);
+		}
+
+		.list-box {
+			border: 1px dashed rgba(255, 255, 255, 0.2);
+			border-radius: 10px;
+			padding: 10px;
+			min-height: 92px;
+			display: grid;
+			gap: 6px;
+			font-family: "IBM Plex Mono", monospace;
+			font-size: 0.84rem;
+			color: #c6e4e9;
+			max-height: 220px;
+			overflow: auto;
+		}
+
+		.status {
+			padding: 12px;
+			border-radius: 10px;
+			background: rgba(9, 14, 17, 0.65);
+			border: 1px solid rgba(255, 255, 255, 0.14);
+			font-family: "IBM Plex Mono", monospace;
+			color: #d9f4f8;
+			min-height: 48px;
+		}
+
+		.progress-wrap {
+			display: grid;
+			gap: 6px;
+		}
+
+		.progress {
+			height: 10px;
+			border-radius: 999px;
+			background: rgba(255, 255, 255, 0.12);
+			overflow: hidden;
+		}
+
+		.progress > div {
+			width: 0;
+			height: 100%;
+			background: linear-gradient(90deg, var(--accent-a), var(--accent-b));
+			transition: width 0.25s ease;
+		}
+
+		.footer-note {
+			color: #95bcc2;
+			font-size: 0.84rem;
+			text-align: right;
+			font-family: "IBM Plex Mono", monospace;
+		}
+
+		@media (max-width: 1040px) {
+			.grid {
+				grid-template-columns: 1fr;
+			}
+
+			.footer-note {
+				text-align: left;
+			}
+		}
+	</style>
+</head>
+<body>
+	<main class="wrap">
+		<header class="topbar">
+			<div class="title">
+				<h1>Face Recognition Dashboard</h1>
+				<p>Live feed, detection control, and enrollment from one place.</p>
+			</div>
+			<div id="modePill" class="mode-pill">mode: loading</div>
+		</header>
+
+		<section class="grid">
+			<article class="panel feed-panel">
+				<img id="feed" class="feed" src="/video_feed" alt="Live camera feed">
+				<div class="feed-meta">
+					<div id="visibleFaces">visible: --</div>
+					<div id="enrollCounter">enroll: --</div>
+					<div id="peopleCount">people: --</div>
+				</div>
+				<div id="statusMessage" class="status">Connecting...</div>
+			</article>
+
+			<aside class="panel controls">
+				<h2>Controls</h2>
+
+				<div class="section">
+					<h3>Detection</h3>
+					<div class="row">
+						<button id="startDetection" class="btn-primary">Start Detection</button>
+						<button id="stopDetection" class="btn-warn">Stop Detection</button>
+					</div>
+				</div>
+
+				<div class="section">
+					<h3>Enrollment</h3>
+					<input id="enrollName" type="text" placeholder="Person name">
+					<input id="enrollSamples" type="number" min="1" max="30" value="10">
+					<div class="row">
+						<button id="startEnroll" class="btn-primary">Start Enrollment</button>
+						<button id="cancelEnroll" class="btn-warn">Cancel</button>
+					</div>
+					<div class="progress-wrap">
+						<div id="enrollProgressLabel">progress: 0 / 0</div>
+						<div class="progress"><div id="enrollProgressBar"></div></div>
+					</div>
+				</div>
+
+				<div class="section">
+					<h3>Delete Person</h3>
+					<select id="deleteSelect"></select>
+					<button id="deleteBtn" class="btn-danger">Delete Selected</button>
+				</div>
+
+				<div class="section">
+					<h3>Enrolled People</h3>
+					<div id="peopleList" class="list-box"></div>
+				</div>
+			</aside>
+		</section>
+
+		<div class="footer-note">Tip: keep one face in frame during enrollment for best results.</div>
+	</main>
+
+	<script>
+		const modePill = document.getElementById("modePill");
+		const statusMessage = document.getElementById("statusMessage");
+		const visibleFaces = document.getElementById("visibleFaces");
+		const enrollCounter = document.getElementById("enrollCounter");
+		const peopleCount = document.getElementById("peopleCount");
+		const peopleList = document.getElementById("peopleList");
+		const deleteSelect = document.getElementById("deleteSelect");
+		const enrollProgressLabel = document.getElementById("enrollProgressLabel");
+		const enrollProgressBar = document.getElementById("enrollProgressBar");
+
+		const enrollName = document.getElementById("enrollName");
+		const enrollSamples = document.getElementById("enrollSamples");
+
+		async function api(path, method = "POST", body = null) {
+			const response = await fetch(path, {
+				method,
+				headers: { "Content-Type": "application/json" },
+				body: body ? JSON.stringify(body) : null,
+			});
+
+			const data = await response.json();
+			if (!response.ok || !data.ok && data.ok !== undefined) {
+				throw new Error(data.message || "Request failed");
+			}
+			return data;
+		}
+
+		function renderPeople(people) {
+			peopleList.innerHTML = "";
+			deleteSelect.innerHTML = "";
+
+			if (!people.length) {
+				const item = document.createElement("div");
+				item.textContent = "(none)";
+				peopleList.appendChild(item);
+
+				const option = document.createElement("option");
+				option.textContent = "No people enrolled";
+				option.value = "";
+				deleteSelect.appendChild(option);
+				return;
+			}
+
+			for (const name of people) {
+				const item = document.createElement("div");
+				item.textContent = name;
+				peopleList.appendChild(item);
+
+				const option = document.createElement("option");
+				option.textContent = name;
+				option.value = name;
+				deleteSelect.appendChild(option);
+			}
+		}
+
+		function updateStatus(status) {
+			const mode = status.mode || "unknown";
+			modePill.textContent = `mode: ${mode}`;
+			statusMessage.textContent = status.message || "Ready";
+
+			const visible = status.visible_names || [];
+			visibleFaces.textContent = `visible: ${visible.length ? visible.join(", ") : "none"}`;
+
+			const people = status.enrolled_people || [];
+			peopleCount.textContent = `people: ${people.length}`;
+			renderPeople(people);
+
+			const enroll = status.enroll || {};
+			const target = enroll.target || 0;
+			const collected = enroll.collected || 0;
+			enrollCounter.textContent = `enroll: ${enroll.name || "-"}`;
+			enrollProgressLabel.textContent = `progress: ${collected} / ${target}`;
+
+			const pct = target > 0 ? Math.min(100, Math.round((collected / target) * 100)) : 0;
+			enrollProgressBar.style.width = `${pct}%`;
+		}
+
+		async function refreshStatus() {
+			try {
+				const response = await fetch("/api/status");
+				const status = await response.json();
+				updateStatus(status);
+			} catch (err) {
+				statusMessage.textContent = err.message || "Failed to fetch status";
+			}
+		}
+
+		document.getElementById("startDetection").addEventListener("click", async () => {
+			try {
+				const data = await api("/api/recognition/start");
+				statusMessage.textContent = data.message;
+			} catch (err) {
+				statusMessage.textContent = err.message;
+			}
+		});
+
+		document.getElementById("stopDetection").addEventListener("click", async () => {
+			try {
+				const data = await api("/api/recognition/stop");
+				statusMessage.textContent = data.message;
+			} catch (err) {
+				statusMessage.textContent = err.message;
+			}
+		});
+
+		document.getElementById("startEnroll").addEventListener("click", async () => {
+			try {
+				const data = await api("/api/enroll", "POST", {
+					name: enrollName.value.trim(),
+					samples: Number(enrollSamples.value || 10),
+				});
+				statusMessage.textContent = data.message;
+			} catch (err) {
+				statusMessage.textContent = err.message;
+			}
+		});
+
+		document.getElementById("cancelEnroll").addEventListener("click", async () => {
+			try {
+				const data = await api("/api/enroll/cancel");
+				statusMessage.textContent = data.message;
+			} catch (err) {
+				statusMessage.textContent = err.message;
+			}
+		});
+
+		document.getElementById("deleteBtn").addEventListener("click", async () => {
+			const name = deleteSelect.value;
+			if (!name) {
+				statusMessage.textContent = "Choose a person to delete";
+				return;
+			}
+
+			try {
+				const data = await api("/api/person/delete", "POST", { name });
+				statusMessage.textContent = data.message;
+			} catch (err) {
+				statusMessage.textContent = err.message;
+			}
+		});
+
+		refreshStatus();
+		setInterval(refreshStatus, 1000);
+	</script>
+</body>
+</html>
