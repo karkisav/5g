@@ -79,6 +79,18 @@ body::after{
   content:'';display:inline-block;width:6px;height:6px;
   border-radius:50%;background:var(--amber);flex-shrink:0;
 }
+.panel-head-split{justify-content:space-between}
+.panel-head-split > span{display:flex;align-items:center;gap:8px}
+.btn-mini{
+  background:transparent;border:1px solid var(--amber);color:var(--amber);
+  border-radius:2px;padding:4px 8px;cursor:pointer;
+  font-family:'IBM Plex Mono',monospace;font-size:.58rem;
+  letter-spacing:.08em;text-transform:uppercase;transition:all .18s;
+}
+.btn-mini:hover{background:rgba(240,165,0,.08)}
+.btn-mini.danger{border-color:var(--red);color:var(--red)}
+.btn-mini.danger:hover{background:rgba(224,48,48,.10)}
+.panel-actions{display:flex;align-items:center;gap:6px}
 
 /* ═══════════════════════════════════════════════════════ center feed */
 .feed-panel{
@@ -320,7 +332,13 @@ body::after{
 
 <!-- ── right: detected faces ─────────────────────── -->
 <div class="panel right-panel">
-  <div class="panel-head">Detected Faces</div>
+  <div class="panel-head panel-head-split">
+    <span>Detected Faces</span>
+    <div class="panel-actions">
+      <button class="btn-mini" id="btn-export-log">Export Log</button>
+      <button class="btn-mini danger" id="btn-clear-log">Clear</button>
+    </div>
+  </div>
   <div class="faces-scroll" id="faces-list">
     <div class="empty-note">No faces in frame.</div>
   </div>
@@ -336,7 +354,8 @@ body::after{
   FaceOS v1.0 &nbsp;·&nbsp;
   buffalo_l model &nbsp;·&nbsp;
   threshold <span>0.45</span> &nbsp;·&nbsp;
-  port <span>5050</span>
+  port <span>5050</span> &nbsp;·&nbsp;
+  logs <span id="log-count">0</span>
 </div>
 
 </div><!-- .shell -->
@@ -349,6 +368,11 @@ let streamOn  = false;
 let enrollOn  = false;
 let enrollTotal = 10;
 let people    = [];
+let faceLogs  = [];
+let loggedNames = new Set();
+let firstSuccessfulIdentification = null;
+
+const MAX_FACE_LOGS = 20000;
 
 function toast(msg, err=false){
   const el=$('toast');
@@ -361,6 +385,126 @@ function toast(msg, err=false){
 
 function esc(s){
   return s.replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+}
+
+function appendFaceLogs(faces, enrollActive){
+  if(!streamOn || !faces.length) return;
+
+  const now = new Date();
+  const tsIso = now.toISOString();
+  const tsMs = now.getTime();
+
+  for(const f of faces){
+    const nameKey = String(f.name || '').trim().toLowerCase();
+    if(loggedNames.has(nameKey)) continue;
+    loggedNames.add(nameKey);
+
+    const known = f.name !== 'Unknown';
+    const entry = {
+      timestamp_iso: tsIso,
+      timestamp_ms: tsMs,
+      name: f.name,
+      known,
+      score: Number(f.score),
+      bbox: Array.isArray(f.bbox) ? f.bbox.map(v => Number(v)) : [],
+      enroll_active: !!enrollActive,
+      stream_active: true,
+      first_success_global: false,
+    };
+
+    if(known && !firstSuccessfulIdentification){
+      entry.first_success_global = true;
+      firstSuccessfulIdentification = { ...entry };
+    }
+
+    faceLogs.push(entry);
+  }
+
+  if(faceLogs.length > MAX_FACE_LOGS){
+    faceLogs.splice(0, faceLogs.length - MAX_FACE_LOGS);
+  }
+  $('log-count').textContent = String(faceLogs.length);
+}
+
+function exportFaceLogs(){
+  if(!faceLogs.length){
+    toast('No face logs to export', true);
+    return;
+  }
+
+  const exportedAt = new Date().toISOString();
+  const headers = [
+    'exported_at',
+    'timestamp_iso',
+    'timestamp_ms',
+    'name',
+    'known',
+    'score',
+    'bbox_x1',
+    'bbox_y1',
+    'bbox_x2',
+    'bbox_y2',
+    'enroll_active',
+    'stream_active',
+    'first_success_global',
+  ];
+
+  const csvEscape = value => {
+    const raw = value == null ? '' : String(value);
+    return /[",\n]/.test(raw) ? `"${raw.replace(/"/g, '""')}"` : raw;
+  };
+
+  const uniqueByName = new Map();
+  for(const entry of faceLogs){
+    const nameKey = String(entry.name || '').trim().toLowerCase();
+    if(!nameKey || uniqueByName.has(nameKey)) continue;
+    uniqueByName.set(nameKey, entry);
+  }
+
+  const rows = Array.from(uniqueByName.values()).map(entry => {
+    const bbox = Array.isArray(entry.bbox) ? entry.bbox : [];
+    return [
+      exportedAt,
+      entry.timestamp_iso,
+      entry.timestamp_ms,
+      entry.name,
+      !!entry.known,
+      entry.score,
+      bbox[0] ?? '',
+      bbox[1] ?? '',
+      bbox[2] ?? '',
+      bbox[3] ?? '',
+      !!entry.enroll_active,
+      !!entry.stream_active,
+      !!entry.first_success_global,
+    ].map(csvEscape).join(',');
+  });
+
+  const csv = [headers.join(','), ...rows].join('\n');
+  const stamp = new Date().toISOString().replace(/[:.]/g, '-');
+  const blob = new Blob([csv], { type: 'text/csv;charset=utf-8' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = `face_logs_${stamp}.csv`;
+  document.body.appendChild(a);
+  a.click();
+  a.remove();
+  URL.revokeObjectURL(url);
+  toast(`Face logs exported as CSV (${rows.length} unique names)`);
+}
+
+function clearFaceLogs(){
+  if(!faceLogs.length){
+    toast('No logs to clear', true);
+    return;
+  }
+  if(!confirm('Clear all face logs and reset first successful identification?')) return;
+  faceLogs = [];
+  loggedNames = new Set();
+  firstSuccessfulIdentification = null;
+  $('log-count').textContent = '0';
+  toast('Face logs cleared');
 }
 
 // ── stream ────────────────────────────────────────────────────────────────────
@@ -395,6 +539,9 @@ $('btn-stop').addEventListener('click', async ()=>{
   $('faces-list').innerHTML='<div class="empty-note">No faces in frame.</div>';
   streamOn=false;
 });
+
+$('btn-export-log').addEventListener('click', exportFaceLogs);
+$('btn-clear-log').addEventListener('click', clearFaceLogs);
 
 // ── enrollment ────────────────────────────────────────────────────────────────
 $('btn-enroll').addEventListener('click', async ()=>{
@@ -489,6 +636,7 @@ sse.onmessage=e=>{
   // faces
   if(streamOn && !d.enroll_active){
     const faces=d.faces||[];
+    appendFaceLogs(faces, d.enroll_active);
     const known=faces.filter(f=>f.name!=='Unknown').length;
     const unknown=faces.length-known;
     $('m-detected').textContent=faces.length;
