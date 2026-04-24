@@ -1,0 +1,15 @@
+services:
+  faceos:
+    build:
+      context: ..
+      dockerfile: docker/Dockerfile
+    container_name: faceos
+    environment:
+      INSIGHTFACE_PROVIDERS: CPUExecutionProvider
+      EMBEDDINGS_FILE: /app/data/embeddings.npy
+      NAMES_FILE: /app/data/names.json
+    ports:
+      - "5050:5050"
+    volumes:
+      - ../data:/app/data
+    restart: unless-stopped

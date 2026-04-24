@@ -1,5 +1,5 @@
-psycopg2
-insightface
 flask
-opencv-python
+insightface
 numpy
+onnxruntime
+opencv-python

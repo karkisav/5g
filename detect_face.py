@@ -3,9 +3,10 @@ import numpy as np
 import cv2
 import os
 import json
+import sys
 
-EMBEDDINGS_FILE = "embeddings.npy"
-NAMES_FILE = "names.json"
+EMBEDDINGS_FILE = os.getenv("EMBEDDINGS_FILE", "embeddings.npy")
+NAMES_FILE = os.getenv("NAMES_FILE", "names.json")
 ENROLL_SAMPLES = 10
 ENROLL_CAPTURE_DELAY_MS = 800   # ms between captures so poses actually vary
 IDENTIFY_THRESHOLD = 0.45       # lowered from 0.6; tune up if false positives appear
@@ -13,8 +14,20 @@ IDENTIFY_THRESHOLD = 0.45       # lowered from 0.6; tune up if false positives a
 
 # Model
 
-app = insightface.app.FaceAnalysis(name="buffalo_l", providers=['CoreMLExecutionProvider', 'CPUExecutionProvider'])
+
+def _resolve_providers():
+    raw = os.getenv("INSIGHTFACE_PROVIDERS", "").strip()
+    if raw:
+        return [p.strip() for p in raw.split(",") if p.strip()]
+    if sys.platform == "darwin":
+        return ["CoreMLExecutionProvider", "CPUExecutionProvider"]
+    return ["CPUExecutionProvider"]
+
+
+providers = _resolve_providers()
+app = insightface.app.FaceAnalysis(name="buffalo_l", providers=providers)
 app.prepare(ctx_id=-1, det_size=(640, 640))
+print(f"[model] InsightFace providers: {providers}")
 
 # Database
 

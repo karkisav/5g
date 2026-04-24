@@ -1,0 +1,4 @@
+services:
+  faceos:
+    devices:
+      - /dev/video0:/dev/video0

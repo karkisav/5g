@@ -8,21 +8,34 @@ import cv2
 import numpy as np
 import json
 import os
+import sys
 import threading
 import time
 from flask import Flask, Response, render_template, request, jsonify, stream_with_context
 import insightface
 
 # ── InsightFace model ──────────────────────────────────────────────────────────
+
+def _resolve_providers():
+    raw = os.getenv("INSIGHTFACE_PROVIDERS", "").strip()
+    if raw:
+        return [p.strip() for p in raw.split(",") if p.strip()]
+    if sys.platform == "darwin":
+        return ["CoreMLExecutionProvider", "CPUExecutionProvider"]
+    return ["CPUExecutionProvider"]
+
+
+_providers = _resolve_providers()
 face_app = insightface.app.FaceAnalysis(
     name="buffalo_l",
-    providers=["CoreMLExecutionProvider", "CPUExecutionProvider"],
+    providers=_providers,
 )
 face_app.prepare(ctx_id=-1, det_size=(640, 640))
+print(f"[model] InsightFace providers: {_providers}")
 
 # ── Config ─────────────────────────────────────────────────────────────────────
-EMBEDDINGS_FILE = "embeddings.npy"
-NAMES_FILE      = "names.json"
+EMBEDDINGS_FILE = os.getenv("EMBEDDINGS_FILE", "embeddings.npy")
+NAMES_FILE      = os.getenv("NAMES_FILE", "names.json")
 ENROLL_SAMPLES  = 10
 ENROLL_DELAY_S  = 0.8
 THRESHOLD       = 0.45
